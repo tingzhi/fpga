@@ -6,7 +6,7 @@ module lab4 (
 	input display_scan_clk,
 	input reset_n,
 	
-	// unclear about quadrature encoder part
+	// unclear about quadrature decoder part
 	
 	output logic [6:0] seg_digits,
 	output [2:0] sel,
