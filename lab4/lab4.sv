@@ -1,40 +1,207 @@
 module lab4 (
-	input led_brighter,
-	input led_dimmer,
-	input pwm_clk,
-	input switch_sample_clk,
-	input display_scan_clk,
+	input led_button,
+	input channel_a,
+	input channel_b,
+	input clk_50,
 	input reset_n,
-	
-	// unclear about quadrature decoder part
 	
 	output logic [6:0] seg_digits,
 	output [2:0] sel,
 	output en_n,
-	output en,
+	output logic en,
 	output pwm
 );
 
-	logic s1_reset;
-	logic up_reset, down_reset, up_reset1, down_reset1, up_reset2, down_reset2, up_reset3, down_reset3;
-	logic [3:0] cntr1_output;
-	logic [3:0] cntr2_output;
-	logic carry1, carry2, carry3,sub1, sub2, sub3;
-	
 	logic [2:0] state_machine_output;
-
-	logic [3:0] lsb_counter_output;
-	logic [3:0] middle_counter_output;
-	logic [3:0] msb_counter_output;
-
 	logic [3:0] mux_output;
 
-	logic up;
-	logic down;
-	logic pulse;
+	logic up_down_n;
+	logic quad_en;
 
-	assign en = 1'b1;
 	assign en_n = 1'b0;
+
+	logic channel_a_clr;
+	logic channel_b_clr;
+	logic led_button_clr;
+	
+	// instantiations of PLL
+	logic clk_2k, pwm_clk_10k;
+	
+	main_clk	main_clk_inst (
+	.inclk0 ( clk_50 ),
+	.c0 ( clk_2k ),
+	.c1 ( pwm_clk_10k )
+	);
+
+	// devide a 2kHz clock to a 2Hz clock
+	logic [10:0] counter_0;
+	logic pwm_clk_2;
+
+	always_ff @ (posedge clk_2k, negedge reset_n) begin
+		if (!reset_n) begin
+			counter_0 <= 0;
+			pwm_clk_2 <= 0;
+		end
+		else if (counter_0 == 9'd500) begin
+			counter_0 <= 0;
+			pwm_clk_2 <= !pwm_clk_2;
+		end
+		else
+			counter_0 ++;
+	end
+	
+	// devide a 2kHz clock to a 1kHz clock
+	logic counter_1;
+	logic switch_sample_clk;
+
+	always_ff @ (posedge clk_2k, negedge reset_n) begin
+		if (!reset_n) begin
+			counter_1 <= 0;
+			switch_sample_clk <= 0;
+		end
+		else if (counter_1 == 1'b1) begin
+			counter_1 <= 0;
+			switch_sample_clk <= !switch_sample_clk;
+		end
+		else
+			counter_1 ++;
+	end
+	
+	// devide a 2kHz clock to a 15Hz clock
+	logic counter_2;
+	logic display_scan_clk;
+
+	always_ff @ (posedge clk_2k, negedge reset_n) begin
+		if (!reset_n) begin
+			counter_2 <= 0;
+			display_scan_clk <= 0;
+		end
+		else if (counter_2 == 6'd64) begin
+			counter_2 <= 0;
+			display_scan_clk <= !display_scan_clk;
+		end
+		else
+			counter_2 ++;
+	end
+	
+	
+	// instantiations of debounce for quad encoder channel A input
+	debounce debounce_0 (
+		.clk		(pwm_clk_10k),
+		//.reset_n	(reset_n),
+		.switch_in	(channel_a),
+		.switch_state	(channel_a_clr)	
+	);
+
+	// instantiations of debounce for quad encoder channel B input
+	debounce debounce_1 (
+		.clk		(pwm_clk_10k),
+		//.reset_n	(reset_n),
+		.switch_in	(channel_b),
+		.switch_state	(channel_b_clr)	
+	);
+
+	// instantiations of debounce for led brightness control button
+	debounce debounce_2 (
+		.clk		(switch_sample_clk),
+		//.reset_n	(reset_n),
+		.switch_in	(led_button),
+		.switch_state	(led_button_clr)	
+	);
+
+	// instantiations of quad decoder
+	quad_decoder quad_decoder_0 (
+		.channel_a	(channel_a_clr), //
+		.channel_b	(channel_b_clr), //
+		.clk		(pwm_clk_10k),
+		.dir		(up_down_n),
+		.quad_en	(quad_en)
+	);
+
+	/*
+	// devide a quad decoder output into a cap 4 counter for each detent
+	logic counter_3;
+	//logic cntr_en;
+	logic q_en;
+	
+	always_ff @ (posedge pwm_clk_10k, negedge reset_n) begin
+		if (!reset_n) begin
+			//u_or_d <= 0;
+			q_en <= 0;
+		end
+		else if (counter_3 == 2'b11 && quad_en == 1'b1) begin
+			counter_3 <= 2'b00;
+			q_en <= 1;
+			//q_en <= quad_en;
+		end
+		else if (quad_en == 1'b1) begin
+			q_en <= 0;
+			counter_3 ++;
+		end
+	end
+*/	
+//	assign q_en = (counter_3 == 2'b11) ? 1'b1 : 1'b0;
+	
+	/*
+	always_ff @ (posedge quad_en, negedge reset_n) begin
+		if (!reset_n) begin
+			counter_3 <= 0;
+		end
+		else if (counter_3 == 2'b11) begin
+			cntr_en <= 1;
+			counter_3 <= 0;
+			//display_scan_clk <= !display_scan_clk;
+		end
+		else
+			counter_3 ++;
+			cntr_en <= 0;
+	end
+	*/
+//	assign up_down_n = 1'b1;
+//	assign quad_en = 1'b1;
+	
+	logic carry_out_0, carry_out_1;
+	logic sub_out_0, sub_out_1;
+	logic [3:0] bcd_0, bcd_1, bcd_2;
+	
+	// instantiations of display counter 0
+	disp_cntr disp_cntr_0 (
+		.up_down_n	(up_down_n),
+		.cntr_en	(quad_en),
+		.clk		(pwm_clk_10k), //
+		.reset_n	(reset_n),
+		.carry_in	(1'b1),
+		.sub_in		(1'b1),
+		.carry_out	(carry_out_0),
+		.sub_out	(sub_out_0),
+		.bcd		(bcd_0)
+	);
+
+	// instantiations of display counter 1
+	disp_cntr disp_cntr_1 (
+		.up_down_n	(up_down_n),
+		.cntr_en	(quad_en),
+		.clk		(pwm_clk_10k),//
+		.reset_n	(reset_n),
+		.carry_in	(carry_out_0),
+		.sub_in		(sub_out_0),
+		.carry_out	(carry_out_1),
+		.sub_out	(sub_out_1),
+		.bcd		(bcd_1)
+	);
+
+	// instantiations of display counter 2
+	disp_cntr disp_cntr_2 (
+		.up_down_n	(up_down_n),
+		.cntr_en	(quad_en),
+		.clk		(pwm_clk_10k), //
+		.reset_n	(reset_n),
+		.carry_in	(carry_out_1),
+		.sub_in		(sub_out_1),
+		.carry_out	(1'b0),
+		.sub_out	(1'b0),
+		.bcd		(bcd_2)
+	);
 	
 	// enumerated states
 	enum logic [1:0] {
@@ -44,7 +211,7 @@ module lab4 (
 	} display_scan_ps, display_scan_ns;
 
 	// display_scan_sm (state machine)
-	always_ff @ (posedge display_scan_clk, negedge reset_n) 
+	always_ff @ (posedge display_scan_clk, negedge reset_n)  // changed the clock here
 	begin
 		if (!reset_n) 
 			display_scan_ps <= STATE0;
@@ -76,150 +243,52 @@ module lab4 (
 	// 3 to 1 mux to select which counter output bit to display
 	always_comb begin
 		unique case (state_machine_output) 
-			3'b000 : mux_output = lsb_counter_output; // least significant bit
-			3'b001 : mux_output = middle_counter_output;
-			3'b011 : mux_output = msb_counter_output; // most significant bit
+			3'b000 : mux_output = bcd_0; // least significant bit
+			3'b001 : mux_output = bcd_1;
+			3'b011 : mux_output = bcd_2; // most significant bit
 		endcase
 	end
 
-	// BCD to 7-seg decoder
-	always_comb begin
-		case (mux_output)
-			4'b0000 : seg_digits = 7'b0000001; // 0
-			4'b0001 : seg_digits = 7'b1001111; // 1
-			4'b0010 : seg_digits = 7'b0010010; // 2
-			4'b0011 : seg_digits = 7'b0000110; // 3
-			4'b0100 : seg_digits = 7'b1001100; // 4
-			4'b0101 : seg_digits = 7'b0100100; // 5
-			4'b0110 : seg_digits = 7'b0100000; // 6
-			4'b0111 : seg_digits = 7'b0001111; // 7
-			4'b1000 : seg_digits = 7'b0000000; // 8
-			4'b1001 : seg_digits = 7'b0000100; // 9
-			default : seg_digits = 7'b1111111;	// when receive any code out of 0-9, display nothing
-		endcase
-	end	
+	// instantiation of BCD to 7-seg decoder
+	bcd_to_7seg bcd_to_7seg_0 (
+		.bcd		(mux_output),
+		.seg_digits	(seg_digits)
+	);
+
 
 	/***************** pwm control led brightness part ***********/
+	logic [3:0] count_a, count_b;
 
-	// control counter
-	always_ff @ (posedge pwm_clk, negedge reset_n) begin
-		if (!reset_n) // async reset
-			cntr1_output <= 4'b0000;
-		else if (s1_reset) // sync reset
-			cntr1_output <= 4'b0000;
-		else
-			cntr1_output <= cntr1_output + 1'b1;
-	end
+	// instantiation of the always on counter
+	pwm_cntr pwm_cntr_0 (
+		.button		(1'b1),
+		.pwm_clk	(pwm_clk_10k),
+		.reset_n	(reset_n),
+		.count		(count_a)
+	);
 
-	always_comb begin
-		s1_reset = 1'b0; // assign default sync reset value
-		if (cntr1_output == 4'hF)
-			s1_reset = 1'b1;
-		else
-			s1_reset = 1'b0;
-	end
-
-	// user input button counter
-	always_ff @ (posedge pwm_clk, negedge reset_n) begin
-		if (!reset_n) 
-			cntr2_output <= 4'b0000;
-		else if (up_reset) 
-			cntr2_output <= 4'b0000;
-		else if (down_reset)
-			cntr2_output <= 4'b1111;
-		else if (led_brighter == 1'b0)
-			cntr2_output ++;
-		else if (led_dimmer == 1'b0)
-			cntr2_output --;
-		else
-			cntr2_output = cntr2_output;
-	end
-
-	always_comb begin
-		up_reset = 1'b0;
-		down_reset = 1'b0;
-		if (cntr2_output == 4'hF && !led_brighter)
-			up_reset = 1'b1;
-		else
-			up_reset = 1'b0;
-		if (cntr2_output == 4'h0 && !led_dimmer)
-			down_reset = 1'b1;
-		else
-			down_reset = 1'b0;
-	end
+	// instantiation of the button controlled counter
+	pwm_cntr pwm_cntr_1 (
+		.button		(led_button_clr),
+		.pwm_clk	(pwm_clk_2),
+		.reset_n	(reset_n),
+		.count		(count_b)
+	);
 
 	// compare output from cntr1 and cntr2 to control pwm pin
-	assign pwm = (cntr1_output >= cntr2_output) ? 1'b1 : 1'b0;
-
-	/************** three up and down counters part *********************/
-	// lsb counter
-
-	always_ff @ (posedge pulse, negedge reset_n) begin
-		if (!reset_n)
-			lsb_counter_output <= 4'b0000;
-		else if (lsb_counter_output == 4'h9 && up == 1'b1) begin
-			lsb_counter_output <= 4'b0000;
-		end
-		else if (lsb_counter_output == 4'h0 && down == 1'b1) begin
-			lsb_counter_output <= 4'b1001;
-		end		
-		else if (up) begin
-			lsb_counter_output ++;
-		end
-		else if (down) begin
-			lsb_counter_output --;
-		end
+	assign pwm = (count_a >= count_b) ? 1'b1 : 1'b0;
+	
+	//assign en = 1'b1;
+	
+	// leading zero suppression
+	
+	always_comb begin
+		if (state_machine_output == 3'b001 && bcd_1 == 4'b0000 && bcd_2 == 4'b0000)
+			en = 1'b0;
+		else if (state_machine_output == 3'b011 && bcd_2 == 4'b0000)
+			en = 1'b0;
 		else
-			lsb_counter_output <= lsb_counter_output;
-	end
-
-	assign carry1 = (lsb_counter_output == 4'h9 && up == 1'b1) ? 1'b1 : 1'b0;
-	assign sub1 = (lsb_counter_output == 4'h0 && down == 1'b1) ? 1'b1 : 1'b0;
-	
-
-// second digit
-	always_ff @ (posedge pulse, negedge reset_n) begin
-		if (!reset_n)
-			middle_counter_output <= 4'b0000;
-		else if (carry1 == 1'b1 && middle_counter_output == 4'h9) begin
-			middle_counter_output <= 4'b0000;
-		end
-		else if (carry1 == 1'b1 && lsb_counter_output == 4'h9) begin
-			middle_counter_output ++;
-		end
-		
-		else if (sub1 ==1'b1 && middle_counter_output == 4'h0) begin
-			middle_counter_output <= 4'h9;
-		end		
-		else if (sub1 == 1'b1 && lsb_counter_output == 4'h0) begin
-			middle_counter_output --;			
-		end
-		
+			en = 1'b1;
 	end
 	
-	assign carry2 = (lsb_counter_output == 4'h9 && middle_counter_output == 4'h9 && up == 1'b1) ? 1'b1 : 1'b0;
-	assign sub2 = (lsb_counter_output == 4'h0 && middle_counter_output ==4'h0 && down == 1'b1)? 1'b1 : 1'b0;
-
-// third digit
-	always_ff @ (posedge pulse, negedge reset_n) begin
-		if (!reset_n)
-			msb_counter_output <= 4'b0000;
-		else if (carry2 == 1'b1 && msb_counter_output == 4'h9) begin
-			msb_counter_output <= 4'b0000;
-			
-		end
-		else if (carry2 == 1'b1 && middle_counter_output == 4'h9) begin
-			msb_counter_output ++;
-			
-		end
-		
-		else if (sub2 ==1'b1 && msb_counter_output == 4'h0) begin
-			msb_counter_output <= 4'h9;
-			
-		end		
-		else if (sub2 == 1'b1 && middle_counter_output == 4'h0) begin
-			msb_counter_output --;			
-			
-		end
-	end
 endmodule

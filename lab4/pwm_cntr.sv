@@ -11,7 +11,7 @@ module pwm_cntr (
 			count <= 4'b0000;
 		else if (sync_reset) 
 			count <= 4'b0000;
-		else if (button == 1'b0)
+		else if (button == 1'b1)
 			count ++;
 		else
 			count = count;
