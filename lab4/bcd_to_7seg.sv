@@ -1,6 +1,6 @@
 module bcd_to_7seg (
 	input [3:0] bcd,
-	output [6:0] logic seg_digits // logic is added for modelsim
+	output [6:0] seg_digits // logic is added for modelsim
 );
 	always_comb begin
                 unique case (bcd)

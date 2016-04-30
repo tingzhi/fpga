@@ -6,7 +6,7 @@ module debounce (
 );
 
 	logic switch_sync_0, switch_sync_1;
-	logic [9:0] switch_cntr;
+	logic [7:0] switch_cntr;
 	
 	// synchronize the switch input to the clock
 	// store the raw input in the first FF and invert the logic
@@ -32,14 +32,14 @@ module debounce (
 	// debounce the switch using a 10-bit counter, max cap 1024
 	always_ff @ (posedge clk, negedge reset_n) begin
 		if (!reset_n) begin
-			switch_cntr <= 10'd0;
+			switch_cntr <= 8'd0;
 			switch_state <= 1'b0;
 		end
-		if (switch_state == switch_sync_1)
-			switch_cntr <= 10'd0;
+		else if (switch_state == switch_sync_1)
+			switch_cntr <= 8'd0;
 		else begin
 			switch_cntr <= switch_cntr + 1'b1;
-			if (switch_cntr == 10'd200) // for 10k clk about 20ms
+			if (switch_cntr == 8'd200) // for 10k clk about 20ms
 				switch_state <= !switch_state;
 		end
 	end
