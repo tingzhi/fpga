@@ -10,8 +10,6 @@ module disp_cntr (
 	output logic [3:0] bcd
 );
 
-//	logic [3:0] cntr_output;
-
 	always_ff @ (posedge clk, negedge reset_n) begin
 		if (!reset_n)
 			bcd <= 4'b0000;
@@ -33,5 +31,4 @@ module disp_cntr (
 
 	assign carry_out = (bcd == 4'h9 && carry_in == 1'b1) ? 1'b1 : 1'b0;
 	assign sub_out = (bcd == 4'h0 && sub_in == 1'b1) ? 1'b1 : 1'b0;
-
 endmodule

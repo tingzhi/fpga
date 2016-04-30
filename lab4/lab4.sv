@@ -11,45 +11,45 @@ module lab4 (
 	output logic en,
 	output pwm
 );
+	
+	assign en_n = 1'b0; // for display board
 
 	logic [2:0] state_machine_output;
 	logic [3:0] mux_output;
 
-	logic up_down_n;
-	logic quad_en;
-
-	assign en_n = 1'b0;
-
-	logic channel_a_clr;
-	logic channel_b_clr;
-	logic led_button_clr;
-	
 	// instantiations of PLL
-	logic clk_2k, pwm_clk_10k;
+	// input 50MHz clock
+	// output c0: 2kHz clock
+	//	  c1: 10kHz clock
+
+	logic clk_2k, clk_10k;
 	
-	main_clk	main_clk_inst (
-	.inclk0 ( clk_50 ),
-	.c0 ( clk_2k ),
-	.c1 ( pwm_clk_10k )
+	main_clk  main_clk_inst (
+		.inclk0 ( clk_50 ),
+		.c0 ( clk_2k ),
+		.c1 ( clk_10k )
 	);
 
 	// devide a 2kHz clock to a 2Hz clock
-	logic [10:0] counter_0;
-	logic pwm_clk_2;
+	// input: 2kHz clock
+	// output: 2Hz clock
+	logic [8:0] counter_0;
+	logic clk_2;
 
 	always_ff @ (posedge clk_2k, negedge reset_n) begin
 		if (!reset_n) begin
 			counter_0 <= 0;
-			pwm_clk_2 <= 0;
+			clk_2 <= 0;
 		end
 		else if (counter_0 == 9'd500) begin
 			counter_0 <= 0;
-			pwm_clk_2 <= !pwm_clk_2;
+			clk_2 <= !clk_2;
 		end
 		else
 			counter_0 ++;
 	end
 	
+	/*
 	// devide a 2kHz clock to a 1kHz clock
 	logic counter_1;
 	logic switch_sample_clk;
@@ -67,53 +67,65 @@ module lab4 (
 			counter_1 ++;
 	end
 	
+	*/
+
 	// devide a 2kHz clock to a 15Hz clock
+	// input: 2kHz clock
+	// output: 15Hz clock
 	logic counter_2;
-	logic display_scan_clk;
+	logic clk_15;
 
 	always_ff @ (posedge clk_2k, negedge reset_n) begin
 		if (!reset_n) begin
 			counter_2 <= 0;
-			display_scan_clk <= 0;
+			clk_15 <= 0;
 		end
 		else if (counter_2 == 6'd64) begin
 			counter_2 <= 0;
-			display_scan_clk <= !display_scan_clk;
+			clk_15 <= !clk_15;
 		end
 		else
 			counter_2 ++;
 	end
 	
-	
 	// instantiations of debounce for quad encoder channel A input
+	logic channel_a_clr;
+
 	debounce debounce_0 (
-		.clk		(pwm_clk_10k),
-		//.reset_n	(reset_n),
+		.clk		(clk_10k),
+		.reset_n	(reset_n),
 		.switch_in	(channel_a),
 		.switch_state	(channel_a_clr)	
 	);
 
 	// instantiations of debounce for quad encoder channel B input
+	logic channel_b_clr;
+
 	debounce debounce_1 (
-		.clk		(pwm_clk_10k),
-		//.reset_n	(reset_n),
+		.clk		(clk_10k),
+		.reset_n	(reset_n),
 		.switch_in	(channel_b),
 		.switch_state	(channel_b_clr)	
 	);
 
 	// instantiations of debounce for led brightness control button
+	logic led_button_clr;
+
 	debounce debounce_2 (
-		.clk		(switch_sample_clk),
-		//.reset_n	(reset_n),
+		.clk		(clk_10k),
+		.reset_n	(reset_n),
 		.switch_in	(led_button),
 		.switch_state	(led_button_clr)	
 	);
 
 	// instantiations of quad decoder
+	logic up_down_n, quad_en;
+
 	quad_decoder quad_decoder_0 (
 		.channel_a	(channel_a_clr), //
 		.channel_b	(channel_b_clr), //
-		.clk		(pwm_clk_10k),
+		.clk		(clk_10k),
+		.reset_n	(reset_n),
 		.dir		(up_down_n),
 		.quad_en	(quad_en)
 	);
@@ -157,8 +169,6 @@ module lab4 (
 			cntr_en <= 0;
 	end
 	*/
-//	assign up_down_n = 1'b1;
-//	assign quad_en = 1'b1;
 	
 	logic carry_out_0, carry_out_1;
 	logic sub_out_0, sub_out_1;
@@ -168,7 +178,7 @@ module lab4 (
 	disp_cntr disp_cntr_0 (
 		.up_down_n	(up_down_n),
 		.cntr_en	(quad_en),
-		.clk		(pwm_clk_10k), //
+		.clk		(clk_10k), //
 		.reset_n	(reset_n),
 		.carry_in	(1'b1),
 		.sub_in		(1'b1),
@@ -181,7 +191,7 @@ module lab4 (
 	disp_cntr disp_cntr_1 (
 		.up_down_n	(up_down_n),
 		.cntr_en	(quad_en),
-		.clk		(pwm_clk_10k),//
+		.clk		(clk_10k),//
 		.reset_n	(reset_n),
 		.carry_in	(carry_out_0),
 		.sub_in		(sub_out_0),
@@ -194,7 +204,7 @@ module lab4 (
 	disp_cntr disp_cntr_2 (
 		.up_down_n	(up_down_n),
 		.cntr_en	(quad_en),
-		.clk		(pwm_clk_10k), //
+		.clk		(clk_10k), //
 		.reset_n	(reset_n),
 		.carry_in	(carry_out_1),
 		.sub_in		(sub_out_1),
@@ -211,7 +221,7 @@ module lab4 (
 	} display_scan_ps, display_scan_ns;
 
 	// display_scan_sm (state machine)
-	always_ff @ (posedge display_scan_clk, negedge reset_n)  // changed the clock here
+	always_ff @ (posedge clk_15, negedge reset_n)  // changed the clock here
 	begin
 		if (!reset_n) 
 			display_scan_ps <= STATE0;
@@ -221,7 +231,6 @@ module lab4 (
 	
 	// state machin next state decoder
 	always_comb begin
-		//state_machine_output = 3'b000; // default state machine output
 		unique case (display_scan_ps)
 			STATE0 : begin
 				display_scan_ns = STATE1;
@@ -239,8 +248,7 @@ module lab4 (
 	end
 	assign sel = state_machine_output; 
 	
-
-	// 3 to 1 mux to select which counter output bit to display
+	// 3 to 1 mux to select which counter output digit to display
 	always_comb begin
 		unique case (state_machine_output) 
 			3'b000 : mux_output = bcd_0; // least significant bit
@@ -255,14 +263,13 @@ module lab4 (
 		.seg_digits	(seg_digits)
 	);
 
-
 	/***************** pwm control led brightness part ***********/
 	logic [3:0] count_a, count_b;
 
 	// instantiation of the always on counter
 	pwm_cntr pwm_cntr_0 (
 		.button		(1'b1),
-		.pwm_clk	(pwm_clk_10k),
+		.pwm_clk	(clk_10k),
 		.reset_n	(reset_n),
 		.count		(count_a)
 	);
@@ -270,15 +277,13 @@ module lab4 (
 	// instantiation of the button controlled counter
 	pwm_cntr pwm_cntr_1 (
 		.button		(led_button_clr),
-		.pwm_clk	(pwm_clk_2),
+		.pwm_clk	(clk_2),
 		.reset_n	(reset_n),
 		.count		(count_b)
 	);
 
 	// compare output from cntr1 and cntr2 to control pwm pin
 	assign pwm = (count_a >= count_b) ? 1'b1 : 1'b0;
-	
-	//assign en = 1'b1;
 	
 	// leading zero suppression
 	
@@ -290,5 +295,4 @@ module lab4 (
 		else
 			en = 1'b1;
 	end
-	
 endmodule

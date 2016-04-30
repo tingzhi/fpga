@@ -1,6 +1,6 @@
 module bcd_to_7seg (
 	input [3:0] bcd,
-	output logic [6:0] seg_digits
+	output [6:0] logic seg_digits // logic is added for modelsim
 );
 	always_comb begin
                 unique case (bcd)
@@ -14,9 +14,8 @@ module bcd_to_7seg (
                         4'b0111 : seg_digits = 7'b0001111; // 7
                         4'b1000 : seg_digits = 7'b0000000; // 8
                         4'b1001 : seg_digits = 7'b0000100; // 9
-                        default : seg_digits = 7'b1111111;      // when receive any code out of 0-9, display nothing
+                       // default : seg_digits = 7'b1111111;      // when receive any code out of 0-9, display nothing
                 endcase
         end
-
 endmodule
 

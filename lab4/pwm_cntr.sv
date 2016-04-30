@@ -4,13 +4,14 @@ module pwm_cntr (
 	input reset_n,
 	output logic [3:0] count
 );
+
 	logic sync_reset;
 
 	always_ff @ (posedge pwm_clk, negedge reset_n) begin
 		if (!reset_n) 
-			count <= 4'b0000;
+			count <= 4'd0;
 		else if (sync_reset) 
-			count <= 4'b0000;
+			count <= 4'd0;
 		else if (button == 1'b1)
 			count ++;
 		else
@@ -18,6 +19,8 @@ module pwm_cntr (
 	end
 
 	assign sync_reset = (count == 4'hf) ? 1'b1 : 1'b0;
+
+	// The following code is used for two buttons one brighter one dimmer
 /*
 	always_comb begin
 		up_reset = 1'b0;
