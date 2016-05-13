@@ -2,34 +2,33 @@ module lab5 (
 	input channel_a,
 	input channel_b,
 	input clk_50,
-	input clk_16m,
-	input clk_10k,
 	input reset_n,
 	
 	output logic [6:0] seg_digits,
 	output [2:0] sel,
 	output en_n,
 	output logic en,
-	output logic [10:0] addr
+	output pwm,
+	output logic [7:0] data
 );
 	
 	assign en_n = 1'b0; // for display board
-//	assign en = 1'b1; //  for display board
+	assign pwm = 1'b0;
 
-/*
 	// instantiations of PLL
 	// input 50MHz clock
-	// output c0: 2kHz clock
+	// output c0: 16MHz clock
 	//	  c1: 10kHz clock
 
-	logic clk_2k, clk_10k;
+	logic clk_16m, clk_10k;
 	
-	main_clk  main_clk_inst (
+	main_clk	main_clk_inst (
 		.inclk0 ( clk_50 ),
-		.c0 ( clk_2k ),
+		.c0 ( clk_16m ),
 		.c1 ( clk_10k )
 	);
 
+	/*
 	// devide a 2kHz clock to a 2Hz clock
 	// input: 2kHz clock
 	// output: 2Hz clock
@@ -175,10 +174,20 @@ module lab5 (
 	end
 	
 	// instantiations of addresser
+	logic [10:0] addr;
+	
 	addresser addresser_0 (
 		.cntr_in 	(count),
 		.clk		(clk_16m),
 		.reset_n	(reset_n),
 		.addr		(addr)
 	);
+	
+	// instantiations of ROM
+	rom	rom_inst (
+		.address ( addr ),
+		.clock ( clk_16m ),
+		.q ( data )
+	);
+	
 endmodule

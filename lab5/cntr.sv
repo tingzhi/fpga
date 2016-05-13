@@ -1,6 +1,7 @@
 module cntr (
 	input direction,
 	input enable,
+//	input [9:0] step,
 	input clk,
 	input reset_n,
 
@@ -15,9 +16,9 @@ module cntr (
 		else if (count == 14'd0 && enable == 1'b1 && direction == 1'b0)
 			count <= 14'd0;
 		else if (enable == 1'b1 && direction == 1'b1)
-			count ++;
+			count <= count + 1'b1;
 		else if (enable == 1'b1 && direction == 1'b0)
-			count --;
+			count <= count - 1'b1;
 		else
 			count <= count;
 	end
