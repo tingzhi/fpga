@@ -25,30 +25,10 @@ module lab5 (
 	main_clk	main_clk_inst (
 		.inclk0 ( clk_50 ),
 		.c0 ( clk_16m ),
-		.c1 ( clk_10k )
+		.c1 ( clk_10k ),
+		.c2 ()
 	);
 
-	/*
-	// devide a 2kHz clock to a 2Hz clock
-	// input: 2kHz clock
-	// output: 2Hz clock
-	logic [8:0] counter_0;
-	logic clk_2;
-
-	always_ff @ (posedge clk_2k, negedge reset_n) begin
-		if (!reset_n) begin
-			counter_0 <= 0;
-			clk_2 <= 0;
-		end
-		else if (counter_0 == 9'd500) begin
-			counter_0 <= 0;
-			clk_2 <= !clk_2;
-		end
-		else
-			counter_0 ++;
-	end
-*/
-	
 	// instantiations of debounce for quad encoder channel A input
 	logic channel_a_clr;
 
@@ -73,8 +53,8 @@ module lab5 (
 	logic up_down_n, quad_en;
 
 	quad_decoder quad_decoder_0 (
-		.channel_a	(channel_a_clr), //
-		.channel_b	(channel_b_clr), //
+		.channel_a	(channel_a_clr), 
+		.channel_b	(channel_b_clr), 
 		.clk		(clk_10k),
 		.reset_n	(reset_n),
 		.dir		(up_down_n),
@@ -182,6 +162,7 @@ module lab5 (
 		.reset_n	(reset_n),
 		.addr		(addr)
 	);
+
 	
 	// instantiations of ROM
 	rom	rom_inst (
@@ -189,5 +170,4 @@ module lab5 (
 		.clock ( clk_16m ),
 		.q ( data )
 	);
-	
 endmodule
