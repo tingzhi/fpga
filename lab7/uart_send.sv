@@ -5,11 +5,52 @@ module uart_send (
 	input [3:0] tens,
 	input [3:0] hundreds,
 	input [3:0] thousands,
-	input adc_data_ready_stretch,
+	input adc_data_ready,
+	input clk,
 
 	output pc_serial_data_out 
 );
 
+	// toggle synchronizer
+	// referenced from http://www.edn.com/electronics-blogs/day-in-the-life-of-a-chip-designer/4435339/Synchronizer-techniques-for-multi-clock-domain-SoCs
+	// generate the adc_data_ready_stretch signal
+	logic adc_data_ready_stretch;
+	logic q_0;
+	always_ff @ (posedge clk, negedge reset_n) begin
+		if (!reset_n) 
+			q_0 <= 0;
+		else if (adc_data_ready)
+			q_0 <= ~q_0;
+		else
+			q_0 <= q_0;	
+	end
+
+	logic q_1, q_2, q_3;
+	always_ff @ (posedge baud_clk, negedge reset_n) begin
+		if (!reset_n)
+			q_1 <= 0;
+		else 
+			q_1 <= q_0;
+	end
+
+	always_ff @ (posedge baud_clk, negedge reset_n) begin
+		if (!reset_n)
+			q_2 <= 0;
+		else 
+			q_2 <= q_1;
+	end
+
+	always_ff @ (posedge baud_clk, negedge reset_n) begin
+		if (!reset_n)
+			q_3 <= 0;
+		else 
+			q_3 <= q_2;
+		adc_data_ready_stretch <= q_3 ^ q_2;
+	end
+
+//	assign adc_data_stretch = q_3 ^ q_2;
+
+	// start the sender design
 	parameter digit_1000s = 2'b00;
 	parameter digit_100s = 2'b01;
 	parameter digit_10s = 2'b10;
