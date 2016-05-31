@@ -1,12 +1,16 @@
 module lab7 (
 	input reset_n,
 	input clk_50,
-	input dout,
+	input dout,  // serial data from adc chip
+	input serial_data_in, // serial data from PC to fpga
 
-	input clk_3m,
-	input clk_10k,	
-	input clk_2,
-
+	input clk_3m,  // clk for adc chip
+	input clk_10k,	// clk for display
+	input clk_2,  // clk for control adc sample freq
+	input rx_sample_clk, // clk for capture signal from PC
+	input baud_clk,  // clk for uart_send module
+	
+	output pc_serial_data_out, // serial output data from fpga to pc
 	output sclk,
 	output cs_n, 
 	output logic din,
@@ -92,8 +96,15 @@ module lab7 (
 
 	// address mux
 	logic [2:0] addr;
-	assign addr = 3'b000;
 
+	// instantiations of uart_receiver module
+	uart_receive uart_receive_0 (
+		.reset_n	(reset_n),
+		.rx_sample_clk 	(rx_sample_clk),
+		.serial_data_in (serial_data_in),
+		.addr		(addr)
+	);
+	
 	always_comb begin
 		unique case (mux_sel)
 			2'b00 : din = addr[0];
@@ -123,6 +134,21 @@ module lab7 (
 		.ones		(bcd_0)
 	);
 	
+	// instantiations of uart_send module
+	
+	uart_send uart_send_0 (
+		.baud_clk	(baud_clk),
+		.reset_n	(reset_n),
+		.ones		(bcd_0),
+		.tens		(bcd_1),
+		.hundreds	(bcd_2),
+		.thousands	(bcd_3),
+		.adc_data_ready	(adc_data_ready),
+		.clk		(clk_3m),
+
+		.pc_serial_data_out	(pc_serial_data_out)
+	);
+
 	logic [2:0] state_machine_output;
 	logic [3:0] mux_output;
 	

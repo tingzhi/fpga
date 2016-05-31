@@ -6,7 +6,7 @@ module uart_send (
 	input [3:0] hundreds,
 	input [3:0] thousands,
 	input adc_data_ready,
-	input clk,
+	input clk, // a clk faster than baud_clk
 
 	output pc_serial_data_out 
 );
